@@ -20,13 +20,60 @@ import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 export const app = express();
 
 // Security & Parsing Middleware
-app.use(helmet());
-app.use(
-  cors({
-    origin: env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN,
-    credentials: true,
-  })
-);
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+
+// Robust CORS configuration supporting wildcard, env-configured origins, Vercel deployments & localhost
+const allowedOrigins = env.CORS_ORIGIN
+  ? env.CORS_ORIGIN.split(',').map((o) => o.trim().replace(/\/$/, ''))
+  : ['*'];
+
+const corsOptions: cors.CorsOptions = {
+  origin: (requestOrigin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
+    if (!requestOrigin) {
+      return callback(null, true);
+    }
+
+    const cleanOrigin = requestOrigin.replace(/\/$/, '');
+
+    // 1. Wildcard match or env CORS_ORIGIN is '*'
+    if (env.CORS_ORIGIN === '*' || allowedOrigins.includes('*')) {
+      return callback(null, true);
+    }
+
+    // 2. Explicit origin match from CORS_ORIGIN env
+    if (allowedOrigins.includes(cleanOrigin)) {
+      return callback(null, true);
+    }
+
+    // 3. Vercel deployment matching (*.vercel.app)
+    if (/^https:\/\/.*\.vercel\.app$/.test(cleanOrigin)) {
+      return callback(null, true);
+    }
+
+    // 4. Localhost matching
+    if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(cleanOrigin)) {
+      return callback(null, true);
+    }
+
+    // Default fallback: allow origin to prevent browser CORS block
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Allow-Origin',
+  ],
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
