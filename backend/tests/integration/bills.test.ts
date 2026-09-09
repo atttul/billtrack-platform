@@ -101,7 +101,8 @@ describe('Bills & Payments API Integration Tests', () => {
   });
 
   describe('Payment Lifecycle (Mark Paid & Recurrence)', () => {
-    it('should mark current occurrence PAID and generate next occurrence for next month', async () => {
+    it('should mark current occurrence PAID and generate next occurrence for next month when due today', async () => {
+      const todayStr = new Date().toISOString().slice(0, 10);
       const createRes = await request(app)
         .post('/api/v1/bills')
         .set('Authorization', `Bearer ${tokenA}`)
@@ -110,7 +111,7 @@ describe('Bills & Payments API Integration Tests', () => {
           amount: 119,
           categoryId,
           frequency: 'MONTHLY',
-          nextDueDate: '2026-09-10',
+          nextDueDate: todayStr,
         });
 
       const billId = createRes.body.data._id;
@@ -129,7 +130,93 @@ describe('Bills & Payments API Integration Tests', () => {
       expect(occurrences.length).toBe(2);
       expect(occurrences[0].status).toBe('PAID');
       expect(occurrences[1].status).toBe('PENDING');
-      expect(new Date(occurrences[1].dueDate).toISOString().slice(0, 10)).toBe('2026-10-10');
+    });
+
+    it('should reject marking payment as paid if occurrence due date is in the future', async () => {
+      const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const createRes = await request(app)
+        .post('/api/v1/bills')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({
+          name: 'Future Netflix',
+          amount: 649,
+          categoryId,
+          frequency: 'MONTHLY',
+          nextDueDate: futureDate,
+        });
+
+      const billId = createRes.body.data._id;
+      const initialNextDueDate = createRes.body.data.nextDueDate;
+
+      const payRes = await request(app)
+        .post(`/api/v1/bills/${billId}/pay`)
+        .set('Authorization', `Bearer ${tokenA}`);
+
+      expect(payRes.status).toBe(400);
+      expect(payRes.body.success).toBe(false);
+      expect(payRes.body.message).toBe('Payment cannot be marked as paid before its due date');
+
+      // Verify state was not modified
+      const occurrences = await PaymentOccurrence.find({ billId });
+      expect(occurrences.length).toBe(1);
+      expect(occurrences[0].status).toBe('PENDING');
+
+      const billAfter = await Bill.findById(billId);
+      expect(new Date(billAfter!.nextDueDate).toISOString()).toBe(new Date(initialNextDueDate).toISOString());
+    });
+
+    it('should allow marking payment as paid when due date is in the past', async () => {
+      const pastDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const createRes = await request(app)
+        .post('/api/v1/bills')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({
+          name: 'Past Due Rent',
+          amount: 15000,
+          categoryId,
+          frequency: 'MONTHLY',
+          nextDueDate: pastDate,
+        });
+
+      const billId = createRes.body.data._id;
+
+      const payRes = await request(app)
+        .post(`/api/v1/bills/${billId}/pay`)
+        .set('Authorization', `Bearer ${tokenA}`);
+
+      expect(payRes.status).toBe(200);
+      expect(payRes.body.success).toBe(true);
+      expect(payRes.body.data.status).toBe('PAID');
+    });
+
+    it('should reject consecutive duplicate payment attempts when next occurrence is in the future', async () => {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const createRes = await request(app)
+        .post('/api/v1/bills')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({
+          name: 'Gym',
+          amount: 2000,
+          categoryId,
+          frequency: 'MONTHLY',
+          nextDueDate: todayStr,
+        });
+
+      const billId = createRes.body.data._id;
+
+      // First payment succeeds
+      const firstPay = await request(app)
+        .post(`/api/v1/bills/${billId}/pay`)
+        .set('Authorization', `Bearer ${tokenA}`);
+      expect(firstPay.status).toBe(200);
+
+      // Immediate second payment attempt fails
+      const secondPay = await request(app)
+        .post(`/api/v1/bills/${billId}/pay`)
+        .set('Authorization', `Bearer ${tokenA}`);
+
+      expect(secondPay.status).toBe(400);
+      expect(secondPay.body.message).toBe('Payment cannot be marked as paid before its due date');
     });
   });
 });

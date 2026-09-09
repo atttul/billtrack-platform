@@ -25,3 +25,16 @@ export function formatRelativeDays(dateString: string | Date): string {
   if (diffDays === -1) return '1 day overdue';
   return `${Math.abs(diffDays)} days overdue`;
 }
+
+export function isFutureDue(dateString: string | Date): boolean {
+  if (!dateString) return false;
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return false;
+  const today = new Date();
+
+  const dateUtc = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+
+  return dateUtc > todayUtc;
+}
+

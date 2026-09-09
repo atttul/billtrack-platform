@@ -190,6 +190,14 @@ export class BillService {
       throw new BadRequestError('No pending payment occurrence found for this bill');
     }
 
+    // Compare occurrence dueDate normalized UTC with today's normalized UTC date
+    const startOfToday = normalizeToStartOfDay(new Date());
+    const occurrenceDueDate = normalizeToStartOfDay(occurrence.dueDate);
+
+    if (occurrenceDueDate.getTime() > startOfToday.getTime()) {
+      throw new BadRequestError('Payment cannot be marked as paid before its due date');
+    }
+
     // 1. Transition status to PAID
     occurrence.status = 'PAID';
     occurrence.paidAt = new Date();

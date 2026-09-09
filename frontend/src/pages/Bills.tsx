@@ -18,7 +18,7 @@ import { Bill, BillStatus } from '../types/bill';
 import { Category } from '../types/category';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency } from '../utils/currency';
-import { formatDate } from '../utils/date';
+import { formatDate, isFutureDue } from '../utils/date';
 import { Badge } from '../components/common/Badge';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { CardSkeleton } from '../components/common/Skeleton';
@@ -261,7 +261,13 @@ export const Bills: React.FC = () => {
                     onClick={() =>
                       setConfirmDialog({ isOpen: true, type: 'pay', bill })
                     }
-                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
+                    disabled={isFutureDue(bill.nextDueDate)}
+                    title={
+                      isFutureDue(bill.nextDueDate)
+                        ? `Payment can be marked as paid on ${formatDate(bill.nextDueDate)}`
+                        : 'Mark as Paid'
+                    }
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-600 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
                   >
                     <CheckCircle className="w-3.5 h-3.5" />
                     <span>Pay</span>

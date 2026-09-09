@@ -15,7 +15,7 @@ import { DashboardSummary } from '../types/dashboard';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency } from '../utils/currency';
-import { formatDate, formatRelativeDays } from '../utils/date';
+import { formatDate, formatRelativeDays, isFutureDue } from '../utils/date';
 import { CardSkeleton } from '../components/common/Skeleton';
 import { Badge } from '../components/common/Badge';
 
@@ -200,8 +200,16 @@ export const Dashboard: React.FC = () => {
                 <div className="flex flex-col gap-3">
                   <button
                     onClick={() => handleMarkNextPaid(summary.nextPayment!.billId)}
-                    disabled={payingBillId === summary.nextPayment.billId}
-                    className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl shadow-md transition-colors flex items-center justify-center gap-2"
+                    disabled={
+                      payingBillId === summary.nextPayment.billId ||
+                      isFutureDue(summary.nextPayment.dueDate)
+                    }
+                    title={
+                      isFutureDue(summary.nextPayment.dueDate)
+                        ? `Payment can be marked as paid on ${formatDate(summary.nextPayment.dueDate)}`
+                        : 'Mark as Paid'
+                    }
+                    className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-600 text-white font-semibold text-sm rounded-xl shadow-md transition-colors flex items-center justify-center gap-2"
                   >
                     <CheckCircle className="w-4 h-4" />
                     <span>Mark as Paid</span>

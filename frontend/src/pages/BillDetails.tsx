@@ -20,7 +20,7 @@ import { Bill } from '../types/bill';
 import { PaymentOccurrence } from '../types/payment';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency } from '../utils/currency';
-import { formatDate, formatRelativeDays } from '../utils/date';
+import { formatDate, formatRelativeDays, isFutureDue } from '../utils/date';
 import { Badge } from '../components/common/Badge';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { Spinner } from '../components/common/Spinner';
@@ -228,9 +228,15 @@ export const BillDetails: React.FC = () => {
         <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             <h3 className="text-base font-bold">Manage Current Payment Cycle</h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Mark this payment as paid when completed, or skip if not applicable.
-            </p>
+            {isFutureDue(bill.nextDueDate) ? (
+              <p className="text-xs text-amber-400 font-medium mt-0.5">
+                Payment can be marked as paid on {formatDate(bill.nextDueDate)}
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400 mt-0.5">
+                Mark this payment as paid when completed, or skip if not applicable.
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -243,7 +249,13 @@ export const BillDetails: React.FC = () => {
             </button>
             <button
               onClick={() => setConfirmDialog({ isOpen: true, type: 'pay' })}
-              className="flex-1 sm:flex-none px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2"
+              disabled={isFutureDue(bill.nextDueDate)}
+              title={
+                isFutureDue(bill.nextDueDate)
+                  ? `Payment can be marked as paid on ${formatDate(bill.nextDueDate)}`
+                  : 'Mark as Paid'
+              }
+              className="flex-1 sm:flex-none px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2"
             >
               <CheckCircle className="w-4 h-4" />
               <span>Mark as Paid</span>
