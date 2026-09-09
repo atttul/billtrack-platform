@@ -11,6 +11,12 @@ export function errorHandler(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   next: NextFunction
 ): Response {
+  // Ensure CORS headers are attached to error responses
+  if (req.headers.origin && !res.getHeader('Access-Control-Allow-Origin')) {
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+
   // Operational AppErrors
   if (err instanceof AppError) {
     if (err.statusCode >= 500) {

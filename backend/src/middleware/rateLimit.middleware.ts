@@ -5,6 +5,7 @@ export const authRateLimiter = rateLimit({
   limit: 20, // Limit each IP to 20 requests per windowMs for auth routes
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS',
   message: {
     success: false,
     message: 'Too many authentication attempts. Please try again later.',
@@ -16,6 +17,7 @@ export const apiRateLimiter = rateLimit({
   limit: 300, // Limit each IP to 300 requests per windowMs for general API
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS',
   message: {
     success: false,
     message: 'Too many requests. Please slow down.',

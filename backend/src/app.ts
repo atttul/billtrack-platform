@@ -4,6 +4,7 @@ import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import mongoose from 'mongoose';
 import { env } from './config/env.js';
+import { connectDatabase } from './config/database.js';
 import { swaggerSpec } from './config/swagger.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { apiRateLimiter } from './middleware/rateLimit.middleware.js';
@@ -19,44 +20,35 @@ import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 
 export const app = express();
 
-// Security & Parsing Middleware
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-
-// Robust CORS configuration supporting wildcard, env-configured origins, Vercel deployments & localhost
+// 1. CORS Configuration (Must be FIRST before any other middleware)
 const allowedOrigins = env.CORS_ORIGIN
   ? env.CORS_ORIGIN.split(',').map((o) => o.trim().replace(/\/$/, ''))
   : ['*'];
 
 const corsOptions: cors.CorsOptions = {
   origin: (requestOrigin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
     if (!requestOrigin) {
       return callback(null, true);
     }
 
     const cleanOrigin = requestOrigin.replace(/\/$/, '');
 
-    // 1. Wildcard match or env CORS_ORIGIN is '*'
     if (env.CORS_ORIGIN === '*' || allowedOrigins.includes('*')) {
       return callback(null, true);
     }
 
-    // 2. Explicit origin match from CORS_ORIGIN env
     if (allowedOrigins.includes(cleanOrigin)) {
       return callback(null, true);
     }
 
-    // 3. Vercel deployment matching (*.vercel.app)
     if (/^https:\/\/.*\.vercel\.app$/.test(cleanOrigin)) {
       return callback(null, true);
     }
 
-    // 4. Localhost matching
     if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(cleanOrigin)) {
       return callback(null, true);
     }
 
-    // Default fallback: allow origin to prevent browser CORS block
     return callback(null, true);
   },
   credentials: true,
@@ -73,17 +65,32 @@ const corsOptions: cors.CorsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.options(/(.*)/, cors(corsOptions));
+
+// 2. Security & Parsing Middleware
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Apply rate limiting to all /api routes
+// 3. Database Connection Middleware (ensures Mongoose is connected on Serverless requests)
+app.use(async (_req: Request, _res: Response, next: NextFunction) => {
+  if (env.NODE_ENV !== 'test') {
+    try {
+      await connectDatabase();
+    } catch {
+      // Continue to next so errorHandler catches it cleanly
+    }
+  }
+  next();
+});
+
+// 4. Rate Limiting Middleware
 app.use('/api', apiRateLimiter);
 
-// OpenAPI Swagger Documentation
+// 5. OpenAPI Swagger Documentation
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Health Check Endpoint
+// 6. Health Check Endpoint
 app.get('/health', async (_req: Request, res: Response) => {
   const mongoStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
   let redisStatus = 'disconnected';
@@ -115,17 +122,17 @@ app.get('/health', async (_req: Request, res: Response) => {
   );
 });
 
-// API v1 Routes
+// 7. API v1 Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/bills', billRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 
-// 404 Route Handler
+// 8. 404 Route Handler
 app.use((_req: Request, _res: Response, next: NextFunction) => {
   next(new NotFoundError('Requested API endpoint does not exist'));
 });
 
-// Centralized Error Handling Middleware
+// 9. Centralized Error Handling Middleware
 app.use(errorHandler);
