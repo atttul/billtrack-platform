@@ -1,8 +1,14 @@
 import pino from 'pino';
 import { env } from './env.js';
 
+const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+const isTest = env.NODE_ENV === 'test' || process.env.NODE_ENV === 'test';
+
+// Pretty printing is ONLY used in local development, never in production/Vercel
+const usePretty = !isProduction && !isTest && env.NODE_ENV === 'development';
+
 export const logger = pino({
-  level: env.NODE_ENV === 'test' ? 'silent' : env.NODE_ENV === 'development' ? 'debug' : 'info',
+  level: isTest ? 'silent' : usePretty ? 'debug' : 'info',
   redact: {
     paths: [
       'req.headers.authorization',
@@ -16,15 +22,14 @@ export const logger = pino({
     ],
     censor: '[REDACTED]',
   },
-  transport:
-    env.NODE_ENV === 'development'
-      ? {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            ignore: 'pid,hostname',
-            translateTime: 'SYS:yyyy-mm-dd HH:MM:ss',
-          },
-        }
-      : undefined,
+  ...(usePretty && {
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        colorize: true,
+        ignore: 'pid,hostname',
+        translateTime: 'SYS:yyyy-mm-dd HH:MM:ss',
+      },
+    },
+  }),
 });
