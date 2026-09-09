@@ -6,6 +6,7 @@ import { Spinner } from '../components/common/Spinner';
 
 import { Login } from '../pages/Login';
 import { Register } from '../pages/Register';
+import { ForgotPassword } from '../pages/ForgotPassword';
 import { Dashboard } from '../pages/Dashboard';
 import { Bills } from '../pages/Bills';
 import { AddBill } from '../pages/AddBill';
@@ -69,6 +70,14 @@ export const AppRoutes: React.FC = () => {
         element={
           <PublicRoute>
             <Register />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <PublicRoute>
+            <ForgotPassword />
           </PublicRoute>
         }
       />

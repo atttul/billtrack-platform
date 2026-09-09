@@ -24,3 +24,8 @@ export interface RegisterPayload {
   timezone?: string;
   currency?: string;
 }
+
+export interface ForgotPasswordPayload {
+  email: string;
+  newPassword: string;
+}

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authController } from './auth.controller.js';
 import { validateRequest } from '../../middleware/validate.middleware.js';
-import { registerSchema, loginSchema } from './auth.validation.js';
+import { registerSchema, loginSchema, forgotPasswordSchema } from './auth.validation.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { authRateLimiter } from '../../middleware/rateLimit.middleware.js';
 
@@ -82,6 +82,39 @@ router.post(
   authRateLimiter,
   validateRequest(loginSchema),
   authController.login
+);
+
+/**
+ * @openapi
+ * /api/v1/auth/forgot-password:
+ *   post:
+ *     summary: Reset user password directly by email
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, newPassword]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: john@example.com
+ *               newPassword:
+ *                 type: string
+ *                 example: newsecret123
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ *       400:
+ *         description: Validation error
+ */
+router.post(
+  '/forgot-password',
+  authRateLimiter,
+  validateRequest(forgotPasswordSchema),
+  authController.forgotPassword
 );
 
 /**

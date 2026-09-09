@@ -93,6 +93,52 @@ describe('Auth API Integration Tests', () => {
     });
   });
 
+  describe('POST /api/v1/auth/forgot-password', () => {
+    beforeEach(async () => {
+      await request(app).post('/api/v1/auth/register').send({
+        name: 'John Reset',
+        email: 'reset@example.com',
+        password: 'oldpassword123',
+      });
+    });
+
+    it('should overwrite existing passwordHash and allow logging in with new password', async () => {
+      // 1. Send forgot-password request
+      const resetRes = await request(app).post('/api/v1/auth/forgot-password').send({
+        email: 'reset@example.com',
+        newPassword: 'newsupersecret123',
+      });
+
+      expect(resetRes.status).toBe(200);
+      expect(resetRes.body.success).toBe(true);
+
+      // 2. Verify old password fails
+      const oldLoginRes = await request(app).post('/api/v1/auth/login').send({
+        email: 'reset@example.com',
+        password: 'oldpassword123',
+      });
+      expect(oldLoginRes.status).toBe(401);
+
+      // 3. Verify new password succeeds
+      const newLoginRes = await request(app).post('/api/v1/auth/login').send({
+        email: 'reset@example.com',
+        password: 'newsupersecret123',
+      });
+      expect(newLoginRes.status).toBe(200);
+      expect(newLoginRes.body.data.token).toBeDefined();
+    });
+
+    it('should fail validation when newPassword is less than 6 characters', async () => {
+      const res = await request(app).post('/api/v1/auth/forgot-password').send({
+        email: 'reset@example.com',
+        newPassword: '123',
+      });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+  });
+
   describe('GET /api/v1/auth/me', () => {
     it('should return current authenticated user profile', async () => {
       const registerRes = await request(app).post('/api/v1/auth/register').send({

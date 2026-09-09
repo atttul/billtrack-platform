@@ -1,5 +1,5 @@
 import { api } from './api';
-import { AuthResponse, LoginPayload, RegisterPayload, User } from '../types/auth';
+import { AuthResponse, LoginPayload, RegisterPayload, ForgotPasswordPayload, User } from '../types/auth';
 
 export interface ApiResponseWrapper<T> {
   success: boolean;
@@ -16,6 +16,10 @@ export const authService = {
   async login(payload: LoginPayload): Promise<AuthResponse> {
     const res = (await api.post('/auth/login', payload)) as unknown as ApiResponseWrapper<AuthResponse>;
     return res.data;
+  },
+
+  async forgotPassword(payload: ForgotPasswordPayload): Promise<void> {
+    await api.post('/auth/forgot-password', payload);
   },
 
   async getCurrentUser(): Promise<User> {

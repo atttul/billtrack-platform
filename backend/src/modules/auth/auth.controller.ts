@@ -21,6 +21,15 @@ export class AuthController {
     }
   }
 
+  async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await authService.forgotPassword(req.body);
+      sendSuccess(res, null, 'Password reset successfully', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async me(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;

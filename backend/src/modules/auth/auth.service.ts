@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { userRepository, UserRepository } from '../users/user.repository.js';
-import { RegisterInput, LoginInput } from './auth.validation.js';
+import { RegisterInput, LoginInput, ForgotPasswordInput } from './auth.validation.js';
 import { ConflictError, UnauthorizedError, NotFoundError } from '../../utils/errors.js';
 import { env } from '../../config/env.js';
 import { categoryRepository } from '../categories/category.repository.js';
@@ -80,6 +80,15 @@ export class AuthService {
       },
       token,
     };
+  }
+
+  async forgotPassword(input: ForgotPasswordInput): Promise<void> {
+    const user = await this.userRepo.findByEmail(input.email, true);
+    if (user) {
+      const salt = await bcrypt.genSalt(10);
+      user.passwordHash = await bcrypt.hash(input.newPassword, salt);
+      await user.save();
+    }
   }
 
   async getCurrentUser(userId: string) {
